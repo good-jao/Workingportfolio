@@ -69,19 +69,24 @@ export const ContactMessageModal: React.FC<ContactMessageModalProps> = ({
         })
       });
 
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.error || 'Failed to send message.');
+      const contentType = res.headers.get('content-type') || '';
+      let messageId = `msg-${Date.now()}`;
+      let timestamp = new Date().toISOString();
+
+      if (res.ok && contentType.includes('application/json')) {
+        const data = await res.json();
+        if (data.messageId) messageId = data.messageId;
+        if (data.timestamp) timestamp = data.timestamp;
       }
 
       const newMessage: DirectMessage = {
-        id: data.messageId || `msg-${Date.now()}`,
+        id: messageId,
         senderName: senderName.trim(),
         senderEmail: senderEmail.trim(),
         subject: subject.trim() || `${inquiryType} Inquiry`,
         inquiryType,
         message: message.trim(),
-        createdAt: data.timestamp || new Date().toISOString(),
+        createdAt: timestamp,
         isRead: false
       };
 

@@ -142,9 +142,9 @@ export const ProjectDetailModal: React.FC<ProjectDetailModalProps> = ({
               </div>
             </div>
 
-            {/* View Mode Toggle, Edit & Close */}
+            {/* View Mode Toggle, Edit (Owner only) & Close */}
             <div className="flex items-center gap-2 flex-shrink-0">
-              {onEditProject && (
+              {isOwner && onEditProject && (
                 <button
                   type="button"
                   onClick={() => onEditProject(project)}
@@ -290,8 +290,8 @@ export const ProjectDetailModal: React.FC<ProjectDetailModalProps> = ({
                           </div>
                         </div>
 
-                        {/* Set as Cover Action Bar */}
-                        {onUpdateProject && !isCover && (
+                        {/* Set as Cover Action Bar (Owner only) */}
+                        {isOwner && onUpdateProject && !isCover && (
                           <div className="p-2 bg-white border-t border-gray-100 flex items-center justify-between">
                             <button
                               type="button"
@@ -438,7 +438,7 @@ export const ProjectDetailModal: React.FC<ProjectDetailModalProps> = ({
             </div>
 
             <div className="flex items-center gap-2 sm:gap-3">
-              {onEditProject && (
+              {isOwner && onEditProject && (
                 <button
                   type="button"
                   onClick={() => onEditProject(project)}
@@ -462,7 +462,7 @@ export const ProjectDetailModal: React.FC<ProjectDetailModalProps> = ({
                 </a>
               )}
 
-              {onDeleteProject && (
+              {isOwner && onDeleteProject && (
                 <button
                   onClick={() => {
                     if (confirm(`Remove folder "${displayTitle}" from your portfolio?`)) {

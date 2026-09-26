@@ -325,14 +325,16 @@ export const PortfolioGrid: React.FC<PortfolioGridProps> = ({
                   <span>Back to Folders</span>
                 </button>
 
-                <button
-                  type="button"
-                  onClick={() => onOpenPostModal(activeMasterFolder)}
-                  className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs transition-all flex items-center gap-1.5 cursor-pointer shadow-md shadow-blue-600/20"
-                >
-                  <PlusCircle className="w-4 h-4" />
-                  <span>+ New {activeMasterFolder === 'Amazon Listing' ? 'Amazon Design' : 'Design'} Folder</span>
-                </button>
+                {isOwner && (
+                  <button
+                    type="button"
+                    onClick={() => onOpenPostModal(activeMasterFolder)}
+                    className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs transition-all flex items-center gap-1.5 cursor-pointer shadow-md shadow-blue-600/20"
+                  >
+                    <PlusCircle className="w-4 h-4" />
+                    <span>+ New {activeMasterFolder === 'Amazon Listing' ? 'Amazon Design' : 'Design'} Folder</span>
+                  </button>
+                )}
               </div>
 
             </div>
@@ -345,15 +347,19 @@ export const PortfolioGrid: React.FC<PortfolioGridProps> = ({
                 </div>
                 <h3 className="text-lg font-bold text-gray-950">No designs inside {activeMasterFolder} yet</h3>
                 <p className="text-sm text-gray-500 max-w-sm mx-auto">
-                  Click the button below to upload images and create the first design folder inside {activeMasterFolder}.
+                  {isOwner 
+                    ? `Click the button below to upload images and create the first design folder inside ${activeMasterFolder}.`
+                    : `Designs in this category will appear here soon.`}
                 </p>
-                <button
-                  onClick={() => onOpenPostModal(activeMasterFolder)}
-                  className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs shadow-md shadow-blue-600/20 cursor-pointer"
-                >
-                  <PlusCircle className="w-4 h-4" />
-                  <span>Create First Design Folder</span>
-                </button>
+                {isOwner && (
+                  <button
+                    onClick={() => onOpenPostModal(activeMasterFolder)}
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs shadow-md shadow-blue-600/20 cursor-pointer"
+                  >
+                    <PlusCircle className="w-4 h-4" />
+                    <span>Create First Design Folder</span>
+                  </button>
+                )}
               </div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
@@ -412,8 +418,8 @@ export const PortfolioGrid: React.FC<PortfolioGridProps> = ({
                           </span>
                         </div>
 
-                        {/* Top Right Edit Button */}
-                        {onEditProject && (
+                        {/* Top Right Edit Button (Owner Only) */}
+                        {isOwner && onEditProject && (
                           <div className="absolute top-3 right-3 z-10">
                             <button
                               type="button"
@@ -462,7 +468,7 @@ export const PortfolioGrid: React.FC<PortfolioGridProps> = ({
                           </div>
 
                           <div className="flex items-center gap-2">
-                            {onEditProject && (
+                            {isOwner && onEditProject && (
                               <button
                                 type="button"
                                 onClick={(e) => {
@@ -719,8 +725,8 @@ export const PortfolioGrid: React.FC<PortfolioGridProps> = ({
                           )}
                         </div>
 
-                        {/* Top Right Edit Button */}
-                        {onEditProject && (
+                        {/* Top Right Edit Button (Owner Only) */}
+                        {isOwner && onEditProject && (
                           <div className="absolute top-3 right-3 z-10">
                             <button
                               type="button"
@@ -767,7 +773,7 @@ export const PortfolioGrid: React.FC<PortfolioGridProps> = ({
                           </div>
 
                           <div className="flex items-center gap-2">
-                            {onEditProject && (
+                            {isOwner && onEditProject && (
                               <button
                                 type="button"
                                 onClick={(e) => {

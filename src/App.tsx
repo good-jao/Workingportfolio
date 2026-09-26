@@ -16,12 +16,13 @@ import { MessagesInboxModal } from './components/MessagesInboxModal';
 import { OwnerLoginModal } from './components/OwnerLoginModal';
 import { Footer } from './components/Footer';
 import { Project, UserProfile, DirectMessage } from './types';
-import { INITIAL_PROJECTS, INITIAL_USER_PROFILE } from './data/initialData';
+import { INITIAL_PROJECTS, INITIAL_USER_PROFILE, INITIAL_MESSAGES } from './data/initialData';
 import { Briefcase, FileText, PlusCircle, Check, Mail, Inbox, Lock } from 'lucide-react';
 
 const STORAGE_PROJECTS_KEY = 'jao_pangan_portfolio_projects_v9';
 const STORAGE_PROFILE_KEY = 'jao_pangan_portfolio_profile_v8';
 const STORAGE_OWNER_TOKEN_KEY = 'jao_owner_session_token_v2';
+const STORAGE_MESSAGES_KEY = 'jao_portfolio_messages_v1';
 
 export default function App() {
   // Load stored projects or fallback to initial data
@@ -95,12 +96,20 @@ export default function App() {
   const [isOwnerLoginOpen, setIsOwnerLoginOpen] = useState(false);
 
   const handleOpenPostModal = (category?: string) => {
+    if (!isOwner) {
+      setIsOwnerLoginOpen(true);
+      return;
+    }
     setEditingProject(null);
     setPostModalCategory(category);
     setIsPostModalOpen(true);
   };
 
   const handleOpenEditProject = (project: Project) => {
+    if (!isOwner) {
+      setIsOwnerLoginOpen(true);
+      return;
+    }
     setEditingProject(project);
   };
 
@@ -131,13 +140,16 @@ export default function App() {
     }
   }, [profile]);
 
-  // Fetch messages from server ONLY if authenticated as Owner
+  // Fetch messages from server ONLY if authenticated as Owner (with Vercel/Static fallback)
   const fetchOwnerMessages = useCallback(async (token: string) => {
+    let loadedMessages: DirectMessage[] | null = null;
+
     try {
       const res = await fetch('/api/messages', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
-      if (res.status === 401) {
+      const contentType = res.headers.get('content-type') || '';
+      if (res.status === 401 && contentType.includes('application/json')) {
         // Token invalid or changed
         setOwnerToken(null);
         setMessages([]);
@@ -147,13 +159,38 @@ export default function App() {
         } catch {}
         return;
       }
-      const data = await res.json();
-      if (data.messages && Array.isArray(data.messages)) {
-        setMessages(data.messages);
+      if (res.ok && contentType.includes('application/json')) {
+        const data = await res.json();
+        if (data.messages && Array.isArray(data.messages)) {
+          loadedMessages = data.messages;
+        }
       }
     } catch (err) {
-      console.error('Failed to load owner messages:', err);
+      // Backend unavailable on static host
     }
+
+    // Fallback to local storage if server didn't respond with JSON
+    if (!loadedMessages) {
+      try {
+        const saved = localStorage.getItem(STORAGE_MESSAGES_KEY);
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            loadedMessages = parsed;
+          }
+        }
+      } catch {}
+    }
+
+    // Default to INITIAL_MESSAGES if still null
+    if (!loadedMessages) {
+      loadedMessages = INITIAL_MESSAGES;
+    }
+
+    setMessages(loadedMessages);
+    try {
+      localStorage.setItem(STORAGE_MESSAGES_KEY, JSON.stringify(loadedMessages));
+    } catch {}
   }, []);
 
   // When ownerToken is valid, fetch messages
@@ -201,12 +238,20 @@ export default function App() {
   };
 
   const handleSaveProject = (newProject: Project) => {
+    if (!isOwner) {
+      setIsOwnerLoginOpen(true);
+      return;
+    }
     setProjects((prev) => [newProject, ...prev]);
     showToast(`"${newProject.title}" has been added to your portfolio!`);
     setSelectedProject(newProject);
   };
 
   const handleUpdateProject = (updated: Project) => {
+    if (!isOwner) {
+      setIsOwnerLoginOpen(true);
+      return;
+    }
     setProjects((prev) => prev.map((p) => (p.id === updated.id ? updated : p)));
     if (selectedProject?.id === updated.id) {
       setSelectedProject(updated);
@@ -215,17 +260,31 @@ export default function App() {
   };
 
   const handleDeleteProject = (projectId: string) => {
+    if (!isOwner) {
+      setIsOwnerLoginOpen(true);
+      return;
+    }
     setProjects((prev) => prev.filter((p) => p.id !== projectId));
     showToast('Project removed from your portfolio.');
   };
 
   const handleSaveProfile = (updatedProfile: UserProfile) => {
+    if (!isOwner) {
+      setIsOwnerLoginOpen(true);
+      return;
+    }
     setProfile(updatedProfile);
     showToast('Your profile information has been updated.');
   };
 
   // Direct on-site messaging handlers
   const handleSendMessage = (newMsg: DirectMessage) => {
+    try {
+      const saved = localStorage.getItem(STORAGE_MESSAGES_KEY);
+      const currentList: DirectMessage[] = saved ? JSON.parse(saved) : INITIAL_MESSAGES;
+      localStorage.setItem(STORAGE_MESSAGES_KEY, JSON.stringify([newMsg, ...currentList]));
+    } catch {}
+
     if (isOwner) {
       setMessages((prev) => [newMsg, ...prev]);
     }
@@ -233,9 +292,13 @@ export default function App() {
   };
 
   const handleMarkRead = async (messageId: string) => {
-    setMessages((prev) =>
-      prev.map((m) => (m.id === messageId ? { ...m, isRead: true } : m))
-    );
+    setMessages((prev) => {
+      const updated = prev.map((m) => (m.id === messageId ? { ...m, isRead: true } : m));
+      try {
+        localStorage.setItem(STORAGE_MESSAGES_KEY, JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
     if (ownerToken) {
       try {
         await fetch(`/api/messages/${messageId}/read`, {
@@ -247,7 +310,13 @@ export default function App() {
   };
 
   const handleDeleteMessage = async (messageId: string) => {
-    setMessages((prev) => prev.filter((m) => m.id !== messageId));
+    setMessages((prev) => {
+      const updated = prev.filter((m) => m.id !== messageId);
+      try {
+        localStorage.setItem(STORAGE_MESSAGES_KEY, JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
     showToast('Message deleted from inbox.');
     if (ownerToken) {
       try {
@@ -293,7 +362,7 @@ export default function App() {
         setActiveTab={setActiveTab}
         searchQuery={searchQuery}
         setSearchQuery={setSearchQuery}
-        onOpenPostModal={() => setIsPostModalOpen(true)}
+        onOpenPostModal={() => handleOpenPostModal()}
         onOpenEditProfile={() => setIsEditProfileOpen(true)}
         onOpenContactModal={() => setIsContactModalOpen(true)}
         onOpenInboxModal={() => setIsInboxModalOpen(true)}
@@ -371,15 +440,26 @@ export default function App() {
           <span>Message</span>
         </button>
 
-        <button
-          onClick={() => handleOpenPostModal()}
-          className="flex flex-col items-center gap-0.5 text-xs font-bold text-blue-600 py-1 cursor-pointer"
-        >
-          <div className="w-9 h-9 rounded-full bg-blue-600 text-white flex items-center justify-center -mt-4 shadow-md shadow-blue-500/30 active:scale-95 transition-transform">
-            <PlusCircle className="w-5 h-5" />
-          </div>
-          <span>Post</span>
-        </button>
+        {isOwner ? (
+          <button
+            onClick={() => handleOpenPostModal()}
+            className="flex flex-col items-center gap-0.5 text-xs font-bold text-blue-600 py-1 cursor-pointer"
+          >
+            <div className="w-9 h-9 rounded-full bg-blue-600 text-white flex items-center justify-center -mt-4 shadow-md shadow-blue-500/30 active:scale-95 transition-transform">
+              <PlusCircle className="w-5 h-5" />
+            </div>
+            <span>Post</span>
+          </button>
+        ) : (
+          <button
+            onClick={() => setIsOwnerLoginOpen(true)}
+            className="flex flex-col items-center gap-0.5 text-xs font-semibold text-gray-400 hover:text-gray-600 py-1 cursor-pointer"
+            title="Owner login"
+          >
+            <Lock className="w-5 h-5" />
+            <span>Owner</span>
+          </button>
+        )}
 
         <button
           onClick={() => { setActiveTab('resume'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
@@ -423,7 +503,7 @@ export default function App() {
         />
       )}
 
-      {(isPostModalOpen || Boolean(editingProject)) && (
+      {isOwner && (isPostModalOpen || Boolean(editingProject)) && (
         <PostProjectModal
           isOpen={isPostModalOpen || Boolean(editingProject)}
           onClose={() => {

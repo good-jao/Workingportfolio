@@ -164,19 +164,21 @@ export const Header: React.FC<HeaderProps> = ({
               </button>
             )}
 
-            {/* Post Design Button */}
-            <button
-              id="btn-post-design"
-              onClick={onOpenPostModal}
-              className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-blue-200 hover:bg-blue-50 text-blue-700 font-semibold text-xs transition-all cursor-pointer"
-              title="Publish a new design project"
-            >
-              <PlusCircle className="w-3.5 h-3.5 text-blue-600" />
-              <span>Post Design</span>
-            </button>
+            {/* OWNER ONLY: Post Design Button */}
+            {isOwner && (
+              <button
+                id="btn-post-design"
+                onClick={onOpenPostModal}
+                className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-blue-200 hover:bg-blue-50 text-blue-700 font-semibold text-xs transition-all cursor-pointer"
+                title="Publish a new design project"
+              >
+                <PlusCircle className="w-3.5 h-3.5 text-blue-600" />
+                <span>Post Design</span>
+              </button>
+            )}
 
             {/* OWNER ONLY: Edit Profile Avatar */}
-            {isOwner ? (
+            {isOwner && (
               <button
                 id="btn-user-profile"
                 onClick={onOpenEditProfile}
@@ -189,7 +191,31 @@ export const Header: React.FC<HeaderProps> = ({
                   className="w-full h-full object-cover"
                 />
               </button>
-            ) : null}
+            )}
+
+            {/* Owner Lock / Login Discreet Button */}
+            {isOwner ? (
+              <button
+                id="btn-header-lock"
+                onClick={onLock}
+                className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-800 text-xs font-bold transition-all cursor-pointer"
+                title="Owner mode active. Click to lock and switch to Client View."
+              >
+                <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+                <span className="hidden lg:inline text-[11px]">Owner Active</span>
+                <Lock className="w-3 h-3 text-emerald-700" />
+              </button>
+            ) : (
+              <button
+                id="btn-header-owner-login"
+                onClick={onOpenOwnerLogin}
+                className="hidden sm:flex items-center gap-1 px-2.5 py-1.5 rounded-xl border border-gray-200 hover:border-blue-300 text-gray-500 hover:text-blue-600 hover:bg-blue-50/70 font-semibold text-xs transition-all cursor-pointer"
+                title="Owner Login (Passcode required to edit designs)"
+              >
+                <Lock className="w-3.5 h-3.5" />
+                <span className="hidden xl:inline text-[11px]">Owner Login</span>
+              </button>
+            )}
 
             {/* Mobile Menu Toggle Button */}
             <button
@@ -285,16 +311,15 @@ export const Header: React.FC<HeaderProps> = ({
               <span>Send Message</span>
             </button>
 
-            <button
-              onClick={() => { onOpenPostModal(); setMobileMenuOpen(false); }}
-              className="w-full py-2.5 px-4 rounded-xl border border-blue-200 bg-blue-50/60 text-blue-700 font-bold text-sm flex items-center justify-center gap-2 hover:bg-blue-100/60 cursor-pointer"
-            >
-              <PlusCircle className="w-4 h-4 text-blue-600" />
-              <span>Post New Design</span>
-            </button>
-
             {isOwner && (
               <>
+                <button
+                  onClick={() => { onOpenPostModal(); setMobileMenuOpen(false); }}
+                  className="w-full py-2.5 px-4 rounded-xl border border-blue-200 bg-blue-50/60 text-blue-700 font-bold text-sm flex items-center justify-center gap-2 hover:bg-blue-100/60 cursor-pointer"
+                >
+                  <PlusCircle className="w-4 h-4 text-blue-600" />
+                  <span>Post New Design</span>
+                </button>
                 <button
                   onClick={() => { onOpenInboxModal(); setMobileMenuOpen(false); }}
                   className="w-full py-2.5 px-4 rounded-xl border border-blue-200 bg-blue-50 text-blue-900 font-bold text-sm flex items-center justify-center gap-2 cursor-pointer"
