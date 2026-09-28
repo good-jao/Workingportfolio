@@ -1,0 +1,84 @@
+{
+  "entities": {
+    "Project": {
+      "title": "Project",
+      "description": "Portfolio design project or folder item",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "title": { "type": "string", "maxLength": 200 },
+        "folderName": { "type": "string", "maxLength": 200 },
+        "parentFolder": { "type": "string", "maxLength": 200 },
+        "subFolder": { "type": "string", "maxLength": 200 },
+        "tagline": { "type": "string", "maxLength": 300 },
+        "category": { "type": "string", "maxLength": 100 },
+        "coverImage": { "type": "string", "maxLength": 500000 },
+        "images": { "type": "array" },
+        "description": { "type": "string", "maxLength": 10000 },
+        "client": { "type": "string", "maxLength": 200 },
+        "role": { "type": "string", "maxLength": 200 },
+        "year": { "type": "string", "maxLength": 50 },
+        "tools": { "type": "array" },
+        "likes": { "type": "number" },
+        "views": { "type": "number" },
+        "featured": { "type": "boolean" },
+        "behanceUrl": { "type": "string", "maxLength": 500 },
+        "liveUrl": { "type": "string", "maxLength": 500 },
+        "challenges": { "type": "string", "maxLength": 5000 },
+        "solution": { "type": "string", "maxLength": 5000 },
+        "palette": { "type": "array" },
+        "createdAt": { "type": "string", "maxLength": 100 }
+      },
+      "required": ["id", "title", "category", "coverImage", "images", "createdAt"]
+    },
+    "DirectMessage": {
+      "title": "DirectMessage",
+      "description": "Client contact inquiry or message sent to portfolio owner",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "senderName": { "type": "string", "maxLength": 100 },
+        "senderEmail": { "type": "string", "maxLength": 200 },
+        "subject": { "type": "string", "maxLength": 200 },
+        "inquiryType": { "type": "string", "maxLength": 100 },
+        "message": { "type": "string", "maxLength": 5000 },
+        "createdAt": { "type": "string", "maxLength": 100 },
+        "isRead": { "type": "boolean" }
+      },
+      "required": ["id", "senderName", "senderEmail", "subject", "message", "createdAt"]
+    },
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Owner public profile details and bio",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "maxLength": 100 },
+        "headline": { "type": "string", "maxLength": 200 },
+        "tagline": { "type": "string", "maxLength": 300 },
+        "bio": { "type": "string", "maxLength": 5000 },
+        "avatar": { "type": "string", "maxLength": 500000 },
+        "coverBanner": { "type": "string", "maxLength": 500000 },
+        "location": { "type": "string", "maxLength": 100 },
+        "email": { "type": "string", "maxLength": 200 },
+        "phone": { "type": "string", "maxLength": 50 },
+        "availableForWork": { "type": "boolean" },
+        "availabilityNote": { "type": "string", "maxLength": 200 }
+      },
+      "required": ["name", "email", "headline"]
+    }
+  },
+  "firestore": {
+    "/projects/{projectId}": {
+      "schema": "Project",
+      "description": "Portfolio projects and design albums"
+    },
+    "/messages/{messageId}": {
+      "schema": "DirectMessage",
+      "description": "Direct inquiries from prospective clients and collaborators"
+    },
+    "/profile/{profileId}": {
+      "schema": "UserProfile",
+      "description": "Public profile configuration of the portfolio owner"
+    }
+  }
+}

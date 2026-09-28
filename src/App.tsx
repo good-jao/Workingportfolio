@@ -18,6 +18,21 @@ import { Footer } from './components/Footer';
 import { Project, UserProfile, DirectMessage } from './types';
 import { INITIAL_PROJECTS, INITIAL_USER_PROFILE, INITIAL_MESSAGES } from './data/initialData';
 import { Briefcase, FileText, PlusCircle, Check, Mail, Inbox, Lock } from 'lucide-react';
+import { 
+  subscribeToProjects, 
+  saveProjectDoc, 
+  updateProjectDoc, 
+  deleteProjectDoc,
+  subscribeToMessages,
+  markMessageReadDoc,
+  deleteMessageDoc,
+  saveProfileDoc,
+  getProfileDoc,
+  logoutOwner,
+  auth,
+  isUserOwner
+} from './firebase';
+import { onAuthStateChanged } from 'firebase/auth';
 
 const STORAGE_PROJECTS_KEY = 'jao_pangan_portfolio_projects_v9';
 const STORAGE_PROFILE_KEY = 'jao_pangan_portfolio_profile_v8';
@@ -140,6 +155,71 @@ export default function App() {
     }
   }, [profile]);
 
+  // Real-time Firestore sync for Projects across all devices and Vercel
+  useEffect(() => {
+    const unsubscribe = subscribeToProjects(
+      (firestoreProjects) => {
+        if (firestoreProjects && firestoreProjects.length > 0) {
+          setProjects(firestoreProjects);
+        } else {
+          // If Firestore is empty on initial run, seed it with INITIAL_PROJECTS
+          INITIAL_PROJECTS.forEach(async (proj) => {
+            try {
+              await saveProjectDoc(proj);
+            } catch {}
+          });
+        }
+      },
+      (err) => {
+        console.warn('Real-time projects listener notice:', err);
+      }
+    );
+    return () => unsubscribe();
+  }, []);
+
+  // Load latest profile from Firestore
+  useEffect(() => {
+    getProfileDoc().then((dbProfile) => {
+      if (dbProfile) {
+        setProfile(dbProfile);
+      }
+    }).catch(() => {});
+  }, []);
+
+  // Listen to Firebase Auth state for Owner
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user && isUserOwner(user)) {
+        const token = `owner-token-google-${user.uid}`;
+        setOwnerToken(token);
+        try {
+          localStorage.setItem(STORAGE_OWNER_TOKEN_KEY, token);
+          sessionStorage.setItem(STORAGE_OWNER_TOKEN_KEY, token);
+        } catch {}
+      }
+    });
+    return () => unsubscribe();
+  }, []);
+
+  // Real-time Firestore sync for Messages (inbox) when Owner is active
+  useEffect(() => {
+    if (isOwner) {
+      const unsubscribe = subscribeToMessages(
+        (firestoreMsgs) => {
+          if (firestoreMsgs && firestoreMsgs.length > 0) {
+            setMessages(firestoreMsgs);
+          }
+        },
+        (err) => {
+          console.warn('Real-time messages listener notice:', err);
+        }
+      );
+      return () => unsubscribe();
+    } else {
+      setMessages([]);
+    }
+  }, [isOwner]);
+
   // Fetch messages from server ONLY if authenticated as Owner (with Vercel/Static fallback)
   const fetchOwnerMessages = useCallback(async (token: string) => {
     let loadedMessages: DirectMessage[] | null = null;
@@ -231,13 +311,14 @@ export default function App() {
       localStorage.removeItem(STORAGE_OWNER_TOKEN_KEY);
       sessionStorage.removeItem(STORAGE_OWNER_TOKEN_KEY);
     } catch {}
+    logoutOwner().catch(() => {});
     setIsInboxModalOpen(false);
     setIsPostModalOpen(false);
     setIsEditProfileOpen(false);
     showToast('Portfolio locked. You are now in Client / Visitor view.');
   };
 
-  const handleSaveProject = (newProject: Project) => {
+  const handleSaveProject = async (newProject: Project) => {
     if (!isOwner) {
       setIsOwnerLoginOpen(true);
       return;
@@ -245,9 +326,14 @@ export default function App() {
     setProjects((prev) => [newProject, ...prev]);
     showToast(`"${newProject.title}" has been added to your portfolio!`);
     setSelectedProject(newProject);
+    try {
+      await saveProjectDoc(newProject);
+    } catch (err) {
+      console.warn('Firestore project save notice:', err);
+    }
   };
 
-  const handleUpdateProject = (updated: Project) => {
+  const handleUpdateProject = async (updated: Project) => {
     if (!isOwner) {
       setIsOwnerLoginOpen(true);
       return;
@@ -257,24 +343,39 @@ export default function App() {
       setSelectedProject(updated);
     }
     showToast(`"${updated.folderName || updated.title}" updated successfully!`);
+    try {
+      await updateProjectDoc(updated);
+    } catch (err) {
+      console.warn('Firestore project update notice:', err);
+    }
   };
 
-  const handleDeleteProject = (projectId: string) => {
+  const handleDeleteProject = async (projectId: string) => {
     if (!isOwner) {
       setIsOwnerLoginOpen(true);
       return;
     }
     setProjects((prev) => prev.filter((p) => p.id !== projectId));
     showToast('Project removed from your portfolio.');
+    try {
+      await deleteProjectDoc(projectId);
+    } catch (err) {
+      console.warn('Firestore project delete notice:', err);
+    }
   };
 
-  const handleSaveProfile = (updatedProfile: UserProfile) => {
+  const handleSaveProfile = async (updatedProfile: UserProfile) => {
     if (!isOwner) {
       setIsOwnerLoginOpen(true);
       return;
     }
     setProfile(updatedProfile);
     showToast('Your profile information has been updated.');
+    try {
+      await saveProfileDoc(updatedProfile);
+    } catch (err) {
+      console.warn('Firestore profile save notice:', err);
+    }
   };
 
   // Direct on-site messaging handlers
@@ -299,6 +400,9 @@ export default function App() {
       } catch {}
       return updated;
     });
+    try {
+      await markMessageReadDoc(messageId);
+    } catch {}
     if (ownerToken) {
       try {
         await fetch(`/api/messages/${messageId}/read`, {
@@ -318,6 +422,9 @@ export default function App() {
       return updated;
     });
     showToast('Message deleted from inbox.');
+    try {
+      await deleteMessageDoc(messageId);
+    } catch {}
     if (ownerToken) {
       try {
         await fetch(`/api/messages/${messageId}`, {

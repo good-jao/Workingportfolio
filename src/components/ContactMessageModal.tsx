@@ -11,6 +11,7 @@ import {
   ArrowRight
 } from 'lucide-react';
 import { DirectMessage, UserProfile } from '../types';
+import { sendClientMessage } from '../firebase';
 
 interface ContactMessageModalProps {
   isOpen: boolean;
@@ -56,59 +57,45 @@ export const ContactMessageModal: React.FC<ContactMessageModalProps> = ({
     setIsSending(true);
     setError('');
 
+    const messageId = `msg-${Date.now()}`;
+    const timestamp = new Date().toISOString();
+
+    const newMessage: DirectMessage = {
+      id: messageId,
+      senderName: senderName.trim(),
+      senderEmail: senderEmail.trim(),
+      subject: subject.trim() || `${inquiryType} Inquiry`,
+      inquiryType,
+      message: message.trim(),
+      createdAt: timestamp,
+      isRead: false
+    };
+
+    // 1. Direct Cloud Sync to Firebase Firestore (Persists on Vercel and across all devices!)
+    try {
+      await sendClientMessage(newMessage);
+    } catch (firebaseErr) {
+      console.warn('Direct Firestore save notice:', firebaseErr);
+    }
+
+    // 2. Also try server endpoint if running on Express dev server
     try {
       const res = await fetch('/api/messages', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          senderName: senderName.trim(),
-          senderEmail: senderEmail.trim(),
-          subject: subject.trim() || `${inquiryType} Inquiry`,
-          inquiryType,
-          message: message.trim()
-        })
+        body: JSON.stringify(newMessage)
       });
-
       const contentType = res.headers.get('content-type') || '';
-      let messageId = `msg-${Date.now()}`;
-      let timestamp = new Date().toISOString();
-
       if (res.ok && contentType.includes('application/json')) {
-        const data = await res.json();
-        if (data.messageId) messageId = data.messageId;
-        if (data.timestamp) timestamp = data.timestamp;
+        await res.json();
       }
-
-      const newMessage: DirectMessage = {
-        id: messageId,
-        senderName: senderName.trim(),
-        senderEmail: senderEmail.trim(),
-        subject: subject.trim() || `${inquiryType} Inquiry`,
-        inquiryType,
-        message: message.trim(),
-        createdAt: timestamp,
-        isRead: false
-      };
-
-      onSendMessage(newMessage);
-      setIsSubmitted(true);
     } catch {
-      // Local fallback
-      const fallbackMessage: DirectMessage = {
-        id: `msg-${Date.now()}`,
-        senderName: senderName.trim(),
-        senderEmail: senderEmail.trim(),
-        subject: subject.trim() || `${inquiryType} Inquiry`,
-        inquiryType,
-        message: message.trim(),
-        createdAt: new Date().toISOString(),
-        isRead: false
-      };
-      onSendMessage(fallbackMessage);
-      setIsSubmitted(true);
-    } finally {
-      setIsSending(false);
+      // Ignored for static / Vercel hosting
     }
+
+    onSendMessage(newMessage);
+    setIsSubmitted(true);
+    setIsSending(false);
   };
 
   const handleReset = () => {
