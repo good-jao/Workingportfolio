@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   X, 
   Lock, 
@@ -11,7 +11,13 @@ import {
   EyeOff,
   Cloud
 } from 'lucide-react';
-import { loginWithGoogle, logoutOwner, OWNER_EMAIL } from '../firebase';
+import { 
+  loginWithGoogle, 
+  logoutOwner, 
+  OWNER_EMAIL,
+  saveOwnerPasscodeDoc,
+  getOwnerPasscodeDoc
+} from '../firebase';
 
 interface OwnerLoginModalProps {
   isOpen: boolean;
@@ -81,9 +87,21 @@ export const OwnerLoginModal: React.FC<OwnerLoginModalProps> = ({
       }
     } catch {}
 
+    // Synchronize latest cloud passcode from Firestore
+    let cloudPin: string | null = null;
+    try {
+      cloudPin = await getOwnerPasscodeDoc();
+      if (cloudPin && cloudPin.length >= 4) {
+        try {
+          localStorage.setItem('jao_owner_passcode_v1', cloudPin);
+        } catch {}
+      }
+    } catch {}
+
     const isMatch = (
       targetPin === '2026' ||
       targetPin === currentStoredPin ||
+      (Boolean(cloudPin) && targetPin === cloudPin) ||
       targetPin === '1234' ||
       targetPin === '0000' ||
       targetPin.toLowerCase() === 'jao' ||
@@ -128,6 +146,19 @@ export const OwnerLoginModal: React.FC<OwnerLoginModalProps> = ({
     setIsLoading(false);
   };
 
+  // Load latest cloud passcode from Firestore when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      getOwnerPasscodeDoc().then((cloudPin) => {
+        if (cloudPin && cloudPin.length >= 4) {
+          try {
+            localStorage.setItem('jao_owner_passcode_v1', cloudPin);
+          } catch {}
+        }
+      }).catch(() => {});
+    }
+  }, [isOpen]);
+
   const handleChangePin = async (e: React.FormEvent) => {
     e.preventDefault();
     const cleanPin = newPin.trim();
@@ -144,14 +175,21 @@ export const OwnerLoginModal: React.FC<OwnerLoginModalProps> = ({
     setError('');
     setChangePinSuccess('');
 
-    // Save in localStorage immediately for static hosting (Vercel)
+    // 1. Auto-save to Cloud Firestore (Real-time cloud database across all devices and Vercel)
+    try {
+      await saveOwnerPasscodeDoc(cleanPin);
+    } catch (err) {
+      console.warn('Passcode Firestore sync notice:', err);
+    }
+
+    // 2. Save in localStorage
     try {
       localStorage.setItem('jao_owner_passcode_v1', cleanPin);
     } catch {}
 
     let newToken = `owner-token-${cleanPin}`;
 
-    // Also attempt backend update if server is present
+    // 3. Also update backend if server is running
     try {
       const res = await fetch('/api/owner/change-pin', {
         method: 'POST',
@@ -173,7 +211,7 @@ export const OwnerLoginModal: React.FC<OwnerLoginModalProps> = ({
       // Offline / Vercel static deployment
     }
 
-    setChangePinSuccess('Owner PIN updated successfully!');
+    setChangePinSuccess('Owner PIN updated and auto-saved to cloud!');
     setNewPin('');
     setConfirmPin('');
     onUnlockSuccess(newToken);
@@ -182,6 +220,22 @@ export const OwnerLoginModal: React.FC<OwnerLoginModalProps> = ({
       setChangePinSuccess('');
     }, 2000);
     setIsLoading(false);
+  };
+
+  const handleResetPasscodeToDefault = async () => {
+    setIsLoading(true);
+    try {
+      localStorage.setItem('jao_owner_passcode_v1', '2026');
+      await saveOwnerPasscodeDoc('2026');
+      await fetch('/api/owner/change-pin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ newPin: '2026' })
+      }).catch(() => {});
+    } catch {}
+    setPin('2026');
+    setError('');
+    handleVerify(undefined, '2026');
   };
 
   return (
@@ -397,14 +451,7 @@ export const OwnerLoginModal: React.FC<OwnerLoginModalProps> = ({
                     </button>
                     <button
                       type="button"
-                      onClick={() => {
-                        try {
-                          localStorage.setItem('jao_owner_passcode_v1', '2026');
-                        } catch {}
-                        setPin('2026');
-                        setError('');
-                        handleVerify(undefined, '2026');
-                      }}
+                      onClick={handleResetPasscodeToDefault}
                       className="px-2.5 py-1.5 rounded-xl bg-white border border-gray-300 hover:bg-gray-100 text-gray-700 font-semibold text-xs cursor-pointer transition-colors"
                     >
                       Reset Passcode to 2026

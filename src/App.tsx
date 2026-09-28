@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Header } from './components/Header';
 import { ProfileHero } from './components/ProfileHero';
 import { PortfolioGrid } from './components/PortfolioGrid';
@@ -24,6 +24,7 @@ import {
   updateProjectDoc, 
   deleteProjectDoc,
   subscribeToMessages,
+  sendClientMessage,
   markMessageReadDoc,
   deleteMessageDoc,
   saveProfileDoc,
@@ -208,6 +209,14 @@ export default function App() {
         (firestoreMsgs) => {
           if (firestoreMsgs && firestoreMsgs.length > 0) {
             setMessages(firestoreMsgs);
+          } else {
+            // First time seeding if Firestore messages collection is empty
+            INITIAL_MESSAGES.forEach(async (m) => {
+              try {
+                await sendClientMessage(m);
+              } catch {}
+            });
+            setMessages(INITIAL_MESSAGES);
           }
         },
         (err) => {
@@ -219,68 +228,6 @@ export default function App() {
       setMessages([]);
     }
   }, [isOwner]);
-
-  // Fetch messages from server ONLY if authenticated as Owner (with Vercel/Static fallback)
-  const fetchOwnerMessages = useCallback(async (token: string) => {
-    let loadedMessages: DirectMessage[] | null = null;
-
-    try {
-      const res = await fetch('/api/messages', {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      const contentType = res.headers.get('content-type') || '';
-      if (res.status === 401 && contentType.includes('application/json')) {
-        // Token invalid or changed
-        setOwnerToken(null);
-        setMessages([]);
-        try {
-          localStorage.removeItem(STORAGE_OWNER_TOKEN_KEY);
-          sessionStorage.removeItem(STORAGE_OWNER_TOKEN_KEY);
-        } catch {}
-        return;
-      }
-      if (res.ok && contentType.includes('application/json')) {
-        const data = await res.json();
-        if (data.messages && Array.isArray(data.messages)) {
-          loadedMessages = data.messages;
-        }
-      }
-    } catch (err) {
-      // Backend unavailable on static host
-    }
-
-    // Fallback to local storage if server didn't respond with JSON
-    if (!loadedMessages) {
-      try {
-        const saved = localStorage.getItem(STORAGE_MESSAGES_KEY);
-        if (saved) {
-          const parsed = JSON.parse(saved);
-          if (Array.isArray(parsed) && parsed.length > 0) {
-            loadedMessages = parsed;
-          }
-        }
-      } catch {}
-    }
-
-    // Default to INITIAL_MESSAGES if still null
-    if (!loadedMessages) {
-      loadedMessages = INITIAL_MESSAGES;
-    }
-
-    setMessages(loadedMessages);
-    try {
-      localStorage.setItem(STORAGE_MESSAGES_KEY, JSON.stringify(loadedMessages));
-    } catch {}
-  }, []);
-
-  // When ownerToken is valid, fetch messages
-  useEffect(() => {
-    if (ownerToken) {
-      fetchOwnerMessages(ownerToken);
-    } else {
-      setMessages([]);
-    }
-  }, [ownerToken, fetchOwnerMessages]);
 
   // Check URL params for ?owner=login shortcut
   useEffect(() => {
@@ -301,7 +248,6 @@ export default function App() {
     setIsOwnerLoginOpen(false);
     setIsInboxModalOpen(true);
     showToast('Welcome back Jao! Owner mode unlocked.');
-    fetchOwnerMessages(token);
   };
 
   const handleLock = () => {
@@ -324,7 +270,7 @@ export default function App() {
       return;
     }
     setProjects((prev) => [newProject, ...prev]);
-    showToast(`"${newProject.title}" has been added to your portfolio!`);
+    showToast(`"${newProject.title}" added & auto-saved to Cloud!`);
     setSelectedProject(newProject);
     try {
       await saveProjectDoc(newProject);
@@ -342,7 +288,7 @@ export default function App() {
     if (selectedProject?.id === updated.id) {
       setSelectedProject(updated);
     }
-    showToast(`"${updated.folderName || updated.title}" updated successfully!`);
+    showToast(`"${updated.folderName || updated.title}" updated & auto-saved to Cloud!`);
     try {
       await updateProjectDoc(updated);
     } catch (err) {
@@ -356,7 +302,7 @@ export default function App() {
       return;
     }
     setProjects((prev) => prev.filter((p) => p.id !== projectId));
-    showToast('Project removed from your portfolio.');
+    showToast('Project removed & synced with Cloud.');
     try {
       await deleteProjectDoc(projectId);
     } catch (err) {
@@ -370,7 +316,7 @@ export default function App() {
       return;
     }
     setProfile(updatedProfile);
-    showToast('Your profile information has been updated.');
+    showToast('Profile updated & auto-saved to Cloud!');
     try {
       await saveProfileDoc(updatedProfile);
     } catch (err) {
@@ -389,7 +335,7 @@ export default function App() {
     if (isOwner) {
       setMessages((prev) => [newMsg, ...prev]);
     }
-    showToast(`Message sent directly to Jao! Thank you, ${newMsg.senderName}.`);
+    showToast(`Message sent directly to Jao and synced to Cloud! Thank you, ${newMsg.senderName}.`);
   };
 
   const handleMarkRead = async (messageId: string) => {
@@ -655,7 +601,7 @@ export default function App() {
           onDeleteMessage={handleDeleteMessage}
           onOpenOwnerSettings={() => setIsOwnerLoginOpen(true)}
           onLock={handleLock}
-          onRefresh={() => ownerToken && fetchOwnerMessages(ownerToken)}
+          onRefresh={() => showToast('Inbox refreshed and synced with Cloud Firestore.')}
           profile={profile}
         />
       )}

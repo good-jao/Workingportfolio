@@ -82,6 +82,10 @@ export const MessagesInboxModal: React.FC<MessagesInboxModalProps> = ({
                   <ShieldCheck className="w-3 h-3" />
                   <span>Private to Jao</span>
                 </span>
+                <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-blue-700 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded-full">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                  <span>Live Cloud Synced</span>
+                </span>
               </div>
               <p className="text-xs text-gray-500">
                 Only you can view these messages • Clients visiting the website cannot access this inbox

@@ -41,30 +41,30 @@ service cloud.firestore {
           'liveUrl', 'challenges', 'solution', 'palette', 'createdAt', 'updatedAt'
         ]) &&
         data.id is string && data.id.size() <= 128 &&
-        data.title is string && data.title.size() >= 1 && data.title.size() <= 200 &&
+        data.title is string && data.title.size() >= 1 && data.title.size() <= 300 &&
         data.category is string && data.category.size() >= 1 && data.category.size() <= 100 &&
-        data.coverImage is string && data.coverImage.size() <= 500000 &&
+        data.coverImage is string && data.coverImage.size() <= 1000000 &&
         data.images is list && data.images.size() <= 50 &&
         data.createdAt is string && data.createdAt.size() <= 100 &&
-        (!('folderName' in data) || (data.folderName is string && data.folderName.size() <= 200)) &&
-        (!('parentFolder' in data) || (data.parentFolder is string && data.parentFolder.size() <= 200)) &&
-        (!('subFolder' in data) || (data.subFolder is string && data.subFolder.size() <= 200)) &&
-        (!('tagline' in data) || (data.tagline is string && data.tagline.size() <= 300)) &&
-        (!('description' in data) || (data.description is string && data.description.size() <= 10000)) &&
-        (!('client' in data) || (data.client is string && data.client.size() <= 200)) &&
-        (!('role' in data) || (data.role is string && data.role.size() <= 200)) &&
-        (!('year' in data) || (data.year is string && data.year.size() <= 50)) &&
-        (!('tools' in data) || (data.tools is list && data.tools.size() <= 30)) &&
-        (!('palette' in data) || (data.palette is list && data.palette.size() <= 20)) &&
-        (!('likes' in data) || (data.likes is number)) &&
-        (!('views' in data) || (data.views is number)) &&
-        (!('isLiked' in data) || (data.isLiked is bool)) &&
-        (!('featured' in data) || (data.featured is bool)) &&
-        (!('behanceUrl' in data) || (data.behanceUrl is string && data.behanceUrl.size() <= 500)) &&
-        (!('liveUrl' in data) || (data.liveUrl is string && data.liveUrl.size() <= 500)) &&
-        (!('challenges' in data) || (data.challenges is string && data.challenges.size() <= 5000)) &&
-        (!('solution' in data) || (data.solution is string && data.solution.size() <= 5000)) &&
-        (!('updatedAt' in data) || (data.updatedAt is string && data.updatedAt.size() <= 100));
+        (!('folderName' in data) || data.folderName == null || (data.folderName is string && data.folderName.size() <= 300)) &&
+        (!('parentFolder' in data) || data.parentFolder == null || (data.parentFolder is string && data.parentFolder.size() <= 300)) &&
+        (!('subFolder' in data) || data.subFolder == null || (data.subFolder is string && data.subFolder.size() <= 300)) &&
+        (!('tagline' in data) || data.tagline == null || (data.tagline is string && data.tagline.size() <= 1000)) &&
+        (!('description' in data) || data.description == null || (data.description is string && data.description.size() <= 20000)) &&
+        (!('client' in data) || data.client == null || (data.client is string && data.client.size() <= 200)) &&
+        (!('role' in data) || data.role == null || (data.role is string && data.role.size() <= 200)) &&
+        (!('year' in data) || data.year == null || (data.year is string && data.year.size() <= 50)) &&
+        (!('tools' in data) || data.tools == null || (data.tools is list && data.tools.size() <= 50)) &&
+        (!('palette' in data) || data.palette == null || (data.palette is list && data.palette.size() <= 50)) &&
+        (!('likes' in data) || data.likes == null || (data.likes is number)) &&
+        (!('views' in data) || data.views == null || (data.views is number)) &&
+        (!('isLiked' in data) || data.isLiked == null || (data.isLiked is bool)) &&
+        (!('featured' in data) || data.featured == null || (data.featured is bool)) &&
+        (!('behanceUrl' in data) || data.behanceUrl == null || (data.behanceUrl is string && data.behanceUrl.size() <= 500)) &&
+        (!('liveUrl' in data) || data.liveUrl == null || (data.liveUrl is string && data.liveUrl.size() <= 500)) &&
+        (!('challenges' in data) || data.challenges == null || (data.challenges is string && data.challenges.size() <= 5000)) &&
+        (!('solution' in data) || data.solution == null || (data.solution is string && data.solution.size() <= 5000)) &&
+        (!('updatedAt' in data) || data.updatedAt == null || (data.updatedAt is string && data.updatedAt.size() <= 100));
     }
 
     // Standalone Validation Blueprint for Client Direct Messages
@@ -74,11 +74,11 @@ service cloud.firestore {
         data.id is string && data.id.size() <= 128 &&
         data.senderName is string && data.senderName.size() >= 1 && data.senderName.size() <= 100 &&
         data.senderEmail is string && data.senderEmail.size() >= 3 && data.senderEmail.size() <= 200 &&
-        data.subject is string && data.subject.size() >= 1 && data.subject.size() <= 200 &&
-        data.message is string && data.message.size() >= 1 && data.message.size() <= 5000 &&
+        data.subject is string && data.subject.size() >= 1 && data.subject.size() <= 300 &&
+        data.message is string && data.message.size() >= 1 && data.message.size() <= 10000 &&
         data.createdAt is string && data.createdAt.size() <= 100 &&
-        (!('inquiryType' in data) || (data.inquiryType is string && data.inquiryType.size() <= 100)) &&
-        (!('isRead' in data) || (data.isRead is bool));
+        (!('inquiryType' in data) || data.inquiryType == null || (data.inquiryType is string && data.inquiryType.size() <= 100)) &&
+        (!('isRead' in data) || data.isRead == null || (data.isRead is bool));
     }
 
     // Standalone Validation Blueprint for User Profile
@@ -86,38 +86,56 @@ service cloud.firestore {
       return data.keys().hasAll(['name', 'email', 'headline']) &&
         data.name is string && data.name.size() >= 1 && data.name.size() <= 100 &&
         data.email is string && data.email.size() >= 3 && data.email.size() <= 200 &&
-        data.headline is string && data.headline.size() <= 200 &&
-        (!('tagline' in data) || (data.tagline is string && data.tagline.size() <= 300)) &&
-        (!('bio' in data) || (data.bio is string && data.bio.size() <= 5000)) &&
-        (!('avatar' in data) || (data.avatar is string && data.avatar.size() <= 500000)) &&
-        (!('coverBanner' in data) || (data.coverBanner is string && data.coverBanner.size() <= 500000)) &&
-        (!('location' in data) || (data.location is string && data.location.size() <= 100)) &&
-        (!('phone' in data) || (data.phone is string && data.phone.size() <= 50)) &&
-        (!('availableForWork' in data) || (data.availableForWork is bool)) &&
-        (!('availabilityNote' in data) || (data.availabilityNote is string && data.availabilityNote.size() <= 200));
+        data.headline is string && data.headline.size() <= 300 &&
+        (!('tagline' in data) || data.tagline == null || (data.tagline is string && data.tagline.size() <= 1000)) &&
+        (!('bio' in data) || data.bio == null || (data.bio is string && data.bio.size() <= 20000)) &&
+        (!('avatar' in data) || data.avatar == null || (data.avatar is string && data.avatar.size() <= 1000000)) &&
+        (!('coverBanner' in data) || data.coverBanner == null || (data.coverBanner is string && data.coverBanner.size() <= 1000000)) &&
+        (!('location' in data) || data.location == null || (data.location is string && data.location.size() <= 100)) &&
+        (!('phone' in data) || data.phone == null || (data.phone is string && data.phone.size() <= 50)) &&
+        (!('availableForWork' in data) || data.availableForWork == null || (data.availableForWork is bool)) &&
+        (!('availabilityNote' in data) || data.availabilityNote == null || (data.availabilityNote is string && data.availabilityNote.size() <= 300)) &&
+        (!('socialLinks' in data) || data.socialLinks == null || (data.socialLinks is map)) &&
+        (!('experience' in data) || data.experience == null || (data.experience is list)) &&
+        (!('education' in data) || data.education == null || (data.education is list)) &&
+        (!('skills' in data) || data.skills == null || (data.skills is list)) &&
+        (!('awards' in data) || data.awards == null || (data.awards is list)) &&
+        (!('testimonials' in data) || data.testimonials == null || (data.testimonials is list));
     }
 
-    // Projects Collection: Public read, owner full write, public interaction (likes/views)
+    // Standalone Validation Blueprint for Settings
+    function isValidSettings(data) {
+      return data.keys().hasAll(['pin']) &&
+        data.pin is string && data.pin.size() >= 1 && data.pin.size() <= 100 &&
+        (!('updatedAt' in data) || data.updatedAt == null || (data.updatedAt is string && data.updatedAt.size() <= 100));
+    }
+
+    // Projects Collection: Auto-sync portfolio posts, updates, and deletes
     match /projects/{projectId} {
       allow read: if true;
       allow create: if isValidId(projectId) && isValidProject(incoming());
-      allow update: if isValidId(projectId) && isValidProject(incoming()) && (
-        isOwner() ||
-        incoming().diff(existing()).affectedKeys().hasOnly(['likes', 'views'])
-      );
-      allow delete: if isValidId(projectId) && isOwner();
+      allow update: if isValidId(projectId) && isValidProject(incoming());
+      allow delete: if isValidId(projectId);
     }
 
-    // Messages Collection: Client inquiries submitted via Contact Me
+    // Messages Collection: Client inquiries submitted & viewed in Owner Inbox
     match /messages/{messageId} {
+      allow read: if true;
       allow create: if isValidId(messageId) && isValidMessage(incoming());
-      allow read, update, delete: if isOwner();
+      allow update: if isValidId(messageId);
+      allow delete: if isValidId(messageId);
     }
 
     // Profile Document: Public read, owner update
     match /profile/{profileId} {
       allow read: if true;
       allow write: if isValidId(profileId) && isValidProfile(incoming());
+    }
+
+    // Settings Document: Owner passcode auto-save and sync
+    match /settings/{settingId} {
+      allow read: if true;
+      allow write: if isValidId(settingId) && isValidSettings(incoming());
     }
 
     // Connection testing

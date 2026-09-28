@@ -10,11 +10,11 @@
         "folderName": { "type": "string", "maxLength": 200 },
         "parentFolder": { "type": "string", "maxLength": 200 },
         "subFolder": { "type": "string", "maxLength": 200 },
-        "tagline": { "type": "string", "maxLength": 300 },
+        "tagline": { "type": "string", "maxLength": 1000 },
         "category": { "type": "string", "maxLength": 100 },
-        "coverImage": { "type": "string", "maxLength": 500000 },
+        "coverImage": { "type": "string", "maxLength": 1000000 },
         "images": { "type": "array" },
-        "description": { "type": "string", "maxLength": 10000 },
+        "description": { "type": "string", "maxLength": 20000 },
         "client": { "type": "string", "maxLength": 200 },
         "role": { "type": "string", "maxLength": 200 },
         "year": { "type": "string", "maxLength": 50 },
@@ -56,15 +56,31 @@
         "headline": { "type": "string", "maxLength": 200 },
         "tagline": { "type": "string", "maxLength": 300 },
         "bio": { "type": "string", "maxLength": 5000 },
-        "avatar": { "type": "string", "maxLength": 500000 },
-        "coverBanner": { "type": "string", "maxLength": 500000 },
+        "avatar": { "type": "string", "maxLength": 1000000 },
+        "coverBanner": { "type": "string", "maxLength": 1000000 },
         "location": { "type": "string", "maxLength": 100 },
         "email": { "type": "string", "maxLength": 200 },
         "phone": { "type": "string", "maxLength": 50 },
         "availableForWork": { "type": "boolean" },
-        "availabilityNote": { "type": "string", "maxLength": 200 }
+        "availabilityNote": { "type": "string", "maxLength": 200 },
+        "socialLinks": { "type": "object" },
+        "experience": { "type": "array" },
+        "education": { "type": "array" },
+        "skills": { "type": "array" },
+        "awards": { "type": "array" },
+        "testimonials": { "type": "array" }
       },
       "required": ["name", "email", "headline"]
+    },
+    "OwnerSettings": {
+      "title": "OwnerSettings",
+      "description": "Owner security settings and passcode configuration",
+      "type": "object",
+      "properties": {
+        "pin": { "type": "string", "maxLength": 100 },
+        "updatedAt": { "type": "string", "maxLength": 100 }
+      },
+      "required": ["pin"]
     }
   },
   "firestore": {
@@ -79,6 +95,10 @@
     "/profile/{profileId}": {
       "schema": "UserProfile",
       "description": "Public profile configuration of the portfolio owner"
+    },
+    "/settings/{settingId}": {
+      "schema": "OwnerSettings",
+      "description": "Owner passcode and configuration"
     }
   }
 }

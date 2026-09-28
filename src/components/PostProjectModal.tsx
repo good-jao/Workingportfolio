@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { Project, ProjectCategory } from '../types';
 import { PRESET_SAMPLE_COVERS } from '../data/initialData';
+import { compressImage } from '../utils/imageCompressor';
 
 interface PostProjectModalProps {
   isOpen: boolean;
@@ -84,6 +85,7 @@ export const PostProjectModal: React.FC<PostProjectModalProps> = ({
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [isPreview, setIsPreview] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [isCompressing, setIsCompressing] = useState(false);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -152,32 +154,39 @@ export const PostProjectModal: React.FC<PostProjectModalProps> = ({
     ? customFolder.trim() 
     : category;
 
-  // Multi-file upload handler
-  const handleMultipleFiles = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Multi-file upload handler with client-side image compression
+  const handleMultipleFiles = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
     const fileList: File[] = Array.from(files);
-    let loadedCount = 0;
-    const newImgs: string[] = [];
+    setIsCompressing(true);
+    setErrorMsg(null);
 
-    fileList.forEach((file: File) => {
-      const reader = new FileReader();
-      reader.onload = () => {
-        if (typeof reader.result === 'string') {
-          newImgs.push(reader.result);
+    try {
+      const compressedResults: string[] = [];
+      for (const file of fileList) {
+        try {
+          const compressed = await compressImage(file, 1280, 1280, 0.8);
+          compressedResults.push(compressed);
+        } catch {
+          // If compression fails, read original
+          const readerResult = await new Promise<string>((res) => {
+            const r = new FileReader();
+            r.onload = () => res(r.result as string);
+            r.readAsDataURL(file);
+          });
+          compressedResults.push(readerResult);
         }
-        loadedCount++;
-        if (loadedCount === fileList.length) {
-          setImages((prev) => [...prev, ...newImgs]);
-          setErrorMsg(null);
-        }
-      };
-      reader.readAsDataURL(file);
-    });
-
-    // Reset input
-    e.target.value = '';
+      }
+      setImages((prev) => [...prev, ...compressedResults]);
+    } catch (err) {
+      console.warn('Image processing notice:', err);
+      setErrorMsg('Failed to process one or more images.');
+    } finally {
+      setIsCompressing(false);
+      e.target.value = '';
+    }
   };
 
   // Add single image from URL
@@ -796,35 +805,50 @@ export const PostProjectModal: React.FC<PostProjectModalProps> = ({
               </div>
 
               {/* Submit Button */}
-              <div className="pt-4 border-t border-blue-50 flex items-center justify-end gap-3">
-                <button
-                  type="button"
-                  onClick={onClose}
-                  className="px-5 py-2.5 rounded-xl border border-gray-200 text-gray-700 hover:bg-gray-50 text-sm font-semibold cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  id="btn-submit-post-project"
-                  className={`px-6 py-2.5 rounded-xl text-white text-sm font-bold shadow-md transition-all cursor-pointer flex items-center gap-2 ${
-                    isEditing
-                      ? 'bg-amber-600 hover:bg-amber-700 shadow-amber-600/25'
-                      : 'bg-blue-600 hover:bg-blue-700 shadow-blue-600/25'
-                  }`}
-                >
-                  {isEditing ? (
-                    <>
-                      <Check className="w-4 h-4" />
-                      <span>Save Changes to Folder</span>
-                    </>
-                  ) : (
-                    <>
-                      <Sparkles className="w-4 h-4" />
-                      <span>Publish Folder ({currentFolder})</span>
-                    </>
+              <div className="pt-4 border-t border-blue-50 flex items-center justify-between gap-3">
+                <div className="text-xs text-gray-500 flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                  <span>Auto-syncs to Cloud Firestore</span>
+                  {isCompressing && (
+                    <span className="text-blue-600 font-medium ml-2 animate-pulse">
+                      Optimizing images...
+                    </span>
                   )}
-                </button>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={onClose}
+                    className="px-5 py-2.5 rounded-xl border border-gray-200 text-gray-700 hover:bg-gray-50 text-sm font-semibold cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    id="btn-submit-post-project"
+                    disabled={isCompressing}
+                    className={`px-6 py-2.5 rounded-xl text-white text-sm font-bold shadow-md transition-all cursor-pointer flex items-center gap-2 disabled:opacity-50 ${
+                      isEditing
+                        ? 'bg-amber-600 hover:bg-amber-700 shadow-amber-600/25'
+                        : 'bg-blue-600 hover:bg-blue-700 shadow-blue-600/25'
+                    }`}
+                  >
+                    {isCompressing ? (
+                      <span>Processing Images...</span>
+                    ) : isEditing ? (
+                      <>
+                        <Check className="w-4 h-4" />
+                        <span>Save Changes &amp; Auto-Sync</span>
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="w-4 h-4" />
+                        <span>Publish Folder ({currentFolder})</span>
+                      </>
+                    )}
+                  </button>
+                </div>
               </div>
 
             </form>

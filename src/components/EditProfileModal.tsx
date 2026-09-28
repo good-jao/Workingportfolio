@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { X, Save, User, MapPin, Mail, Phone, Globe, Upload } from 'lucide-react';
 import { UserProfile } from '../types';
+import { compressImage } from '../utils/imageCompressor';
 
 interface EditProfileModalProps {
   isOpen: boolean;
@@ -28,16 +29,21 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
 
   if (!isOpen) return null;
 
-  const handleAvatarUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onload = () => {
-        if (typeof reader.result === 'string') {
-          setAvatar(reader.result);
-        }
-      };
-      reader.readAsDataURL(file);
+      try {
+        const compressed = await compressImage(file, 600, 600, 0.85);
+        setAvatar(compressed);
+      } catch {
+        const reader = new FileReader();
+        reader.onload = () => {
+          if (typeof reader.result === 'string') {
+            setAvatar(reader.result);
+          }
+        };
+        reader.readAsDataURL(file);
+      }
     }
   };
 

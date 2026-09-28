@@ -130,10 +130,34 @@ export function subscribeToProjects(
   }
 }
 
+// Remove undefined and null fields so Firestore setDoc never throws Unsupported field value or fails null checks
+function cleanForFirestore<T>(data: T): any {
+  if (data === null || data === undefined) return undefined;
+  if (Array.isArray(data)) {
+    return data
+      .filter((item) => item !== undefined && item !== null)
+      .map((item) => cleanForFirestore(item));
+  }
+  if (typeof data === 'object') {
+    const res: Record<string, any> = {};
+    for (const [k, v] of Object.entries(data as Record<string, any>)) {
+      if (v !== undefined && v !== null) {
+        const cleaned = cleanForFirestore(v);
+        if (cleaned !== undefined && cleaned !== null) {
+          res[k] = cleaned;
+        }
+      }
+    }
+    return res;
+  }
+  return data;
+}
+
 export async function saveProjectDoc(project: Project): Promise<void> {
   const path = `projects/${project.id}`;
   try {
-    await setDoc(doc(db, 'projects', project.id), project);
+    const cleaned = cleanForFirestore(project);
+    await setDoc(doc(db, 'projects', project.id), cleaned);
   } catch (err) {
     handleFirestoreError(err, OperationType.WRITE, path);
     throw err;
@@ -143,7 +167,8 @@ export async function saveProjectDoc(project: Project): Promise<void> {
 export async function updateProjectDoc(project: Project): Promise<void> {
   const path = `projects/${project.id}`;
   try {
-    await setDoc(doc(db, 'projects', project.id), project, { merge: true });
+    const cleaned = cleanForFirestore(project);
+    await setDoc(doc(db, 'projects', project.id), cleaned, { merge: true });
   } catch (err) {
     handleFirestoreError(err, OperationType.UPDATE, path);
     throw err;
@@ -166,7 +191,8 @@ export async function deleteProjectDoc(projectId: string): Promise<void> {
 export async function sendClientMessage(message: DirectMessage): Promise<void> {
   const path = `messages/${message.id}`;
   try {
-    await setDoc(doc(db, 'messages', message.id), message);
+    const cleaned = cleanForFirestore(message);
+    await setDoc(doc(db, 'messages', message.id), cleaned);
   } catch (err) {
     handleFirestoreError(err, OperationType.CREATE, path);
     throw err;
@@ -180,14 +206,14 @@ export function subscribeToMessages(
   const path = 'messages';
   try {
     const colRef = collection(db, path);
-    const q = query(colRef, orderBy('createdAt', 'desc'));
     return onSnapshot(
-      q,
+      colRef,
       (snapshot) => {
         const msgs: DirectMessage[] = [];
         snapshot.forEach((d) => {
           msgs.push(d.data() as DirectMessage);
         });
+        msgs.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
         onSuccess(msgs);
       },
       (error) => {
@@ -242,10 +268,41 @@ export async function getProfileDoc(): Promise<UserProfile | null> {
 export async function saveProfileDoc(profile: UserProfile): Promise<void> {
   const path = 'profile/main';
   try {
-    await setDoc(doc(db, 'profile', 'main'), profile, { merge: true });
+    const cleaned = cleanForFirestore(profile);
+    await setDoc(doc(db, 'profile', 'main'), cleaned, { merge: true });
   } catch (err) {
     handleFirestoreError(err, OperationType.WRITE, path);
     throw err;
+  }
+}
+
+// ----------------------------------------------------
+// Settings (Owner Passcode Cloud Sync)
+// ----------------------------------------------------
+export async function saveOwnerPasscodeDoc(pin: string): Promise<void> {
+  const path = 'settings/owner';
+  try {
+    await setDoc(doc(db, 'settings', 'owner'), {
+      pin: pin.trim(),
+      updatedAt: new Date().toISOString()
+    }, { merge: true });
+  } catch (err) {
+    handleFirestoreError(err, OperationType.WRITE, path);
+    throw err;
+  }
+}
+
+export async function getOwnerPasscodeDoc(): Promise<string | null> {
+  const path = 'settings/owner';
+  try {
+    const snap = await getDoc(doc(db, 'settings', 'owner'));
+    if (snap.exists() && snap.data()?.pin) {
+      return String(snap.data().pin).trim();
+    }
+    return null;
+  } catch (err) {
+    handleFirestoreError(err, OperationType.GET, path);
+    return null;
   }
 }
 
